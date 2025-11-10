@@ -15,7 +15,7 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
     minQuality = 10,
     maxQuality = 95,
     maxIterations = 20,
-    safetyMargin = 3072 // 3KB default safety margin to account for filesystem overhead
+    safetyMargin = 1024 // 1KB default safety margin to account for filesystem overhead
   } = options;
 
   const ext = path.extname(inputPath).toLowerCase();

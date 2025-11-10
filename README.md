@@ -5,7 +5,7 @@ A powerful command-line tool for batch optimizing PNG and JPG images to meet spe
 ## Features
 
 - **Smart Optimization**: Binary search algorithm finds optimal quality settings
-- **Safety Margin**: Built-in 3KB safety margin ensures files stay under target (accounts for filesystem overhead)
+- **Safety Margin**: Built-in 1KB safety margin ensures files stay under target (accounts for filesystem overhead)
 - **Batch Processing**: Process multiple images at once with wildcard patterns
 - **Target File Sizes**: Default 40KB, fully customizable
 - **Format Support**: PNG and JPG/JPEG with format-specific optimization
@@ -78,10 +78,10 @@ image-optimizer ./images -o ~/Desktop/final
 image-optimizer ~/Desktop/statics/* --in-place
 ```
 
-**Adjust safety margin (default 3KB):**
+**Adjust safety margin (default 1KB):**
 
 ```bash
-image-optimizer ~/Desktop/statics/* --safety-margin 4096
+image-optimizer ~/Desktop/statics/* --safety-margin 2048
 ```
 
 **Control quality range:**
@@ -111,7 +111,7 @@ Options:
   -k, --size-kb <kb>       Target file size in kilobytes (overrides --size)
   --min-quality <number>   Minimum quality (1-100) (default: "10")
   --max-quality <number>   Maximum quality (1-100) (default: "95")
-  --safety-margin <bytes>  Safety margin in bytes to stay under target (default: "3072")
+  --safety-margin <bytes>  Safety margin in bytes to stay under target (default: "1024")
   --in-place              Optimize files in place (overwrites originals)
   --recursive             Process directories recursively
   -h, --help              display help for command
@@ -121,7 +121,7 @@ Options:
 
 The optimizer uses a multi-stage approach to ensure images meet your target file size:
 
-1. **Safety Margin**: Targets 3KB below your specified limit (e.g., 37KB for 40KB target) to account for filesystem overhead
+1. **Safety Margin**: Targets 1KB below your specified limit (e.g., 39KB for 40KB target) to account for filesystem overhead
 2. **Initial Check**: If image is already under the adjusted target, it's simply copied
 3. **Binary Search**: Uses quality levels 10-95 to find optimal compression while staying under target
 4. **Format-Specific Compression**:
@@ -147,7 +147,7 @@ image-optimizer ~/Desktop/statics/*
 
 ```bash
 image-optimizer ~/Desktop/statics/* --size-kb 50
-# Targets 50KB (actually 47KB with safety margin)
+# Targets 50KB (actually 49KB with safety margin)
 ```
 
 ### Example 3: Process entire directory recursively
@@ -175,13 +175,13 @@ Optimizing images...
 Optimization Results:
 
 ✓ banner-1.jpg
-  156.2 KB → 36.8 KB (-76.44%) quality: 72
+  156.2 KB → 38.9 KB (-75.10%) quality: 75
 
 ✓ hero-image.jpg
-  1.2 MB → 37.1 KB (-96.91%) quality: 45
+  1.2 MB → 39.2 KB (-96.75%) quality: 48
 
 ✓ logo.png
-  89.3 KB → 35.6 KB (-60.13%) quality: 82
+  89.3 KB → 37.8 KB (-57.67%) quality: 85
 
 ✓ thumbnail-small.jpg
   25.4 KB → 25.4 KB (-0.00%) quality: 100
@@ -209,22 +209,21 @@ Summary:
 
 ## Why the Safety Margin?
 
-The tool uses a 3KB safety margin by default (targets 37KB for 40KB limit) because:
+The tool uses a 1KB safety margin by default (targets 39KB for 40KB limit) because:
 
-- **Filesystem overhead**: File sizes on disk vs. actual file sizes differ slightly
-- **Finder/Explorer display**: macOS Finder and Windows Explorer sometimes show rounded values
-- **QA compliance**: Ensures files clearly pass file size checks
-- **Buffer room**: Prevents edge cases where files are just barely over the limit
+- **Filesystem overhead**: File sizes on disk vs. actual file sizes can differ slightly
+- **Edge case protection**: Ensures files that are close to the limit get processed and optimized
+- **Consistent results**: Provides a small buffer for compression variations
 
-You can adjust this with `--safety-margin` if needed.
+You can adjust this with `--safety-margin` if needed (e.g., `--safety-margin 2048` for 2KB).
 
 ## Tips
 
 - **For web images**: 40KB default is ideal for most use cases
-- **For QA**: The 3KB safety margin ensures files pass visual inspection in Finder
+- **For QA**: The 1KB safety margin ensures files stay under target while maximizing quality
 - **Keep originals**: Default behavior creates `optimized` folder - originals stay safe
 - **Test first**: Process a few images before doing large batches
-- **Adjust safety margin**: Increase to 4-5KB if files still appear slightly over in Finder
+- **Adjust safety margin**: Increase to 2-3KB if you need more buffer (e.g., `--safety-margin 2048`)
 - **Use recursive mode**: Process entire project directories at once with `--recursive`
 
 ## License
