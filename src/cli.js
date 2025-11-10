@@ -16,7 +16,7 @@ program
   .version('1.0.0');
 
 program
-  .argument('<input>', 'Input file pattern (e.g., "*.png" or "images/*.jpg") or directory')
+  .argument('<input...>', 'Input file(s), pattern (e.g., "*.png"), or directory')
   .option('-o, --output <dir>', 'Output directory', './optimized')
   .option('-s, --size <bytes>', 'Target file size in bytes', '40960')
   .option('-k, --size-kb <kb>', 'Target file size in kilobytes (overrides --size)')
@@ -24,7 +24,7 @@ program
   .option('--max-quality <number>', 'Maximum quality (1-100)', '95')
   .option('--in-place', 'Optimize files in place (overwrites originals)')
   .option('--recursive', 'Process directories recursively')
-  .action(async (input, options) => {
+  .action(async (inputs, options) => {
     try {
       // Calculate target size
       let targetSize = parseInt(options.size);
@@ -34,21 +34,27 @@ program
 
       // Resolve input paths
       let inputPaths = [];
-      const inputResolved = path.resolve(input);
 
-      // Check if input is a directory
-      try {
-        const stats = await fs.stat(inputResolved);
-        if (stats.isDirectory()) {
-          const pattern = options.recursive ? '**/*.{png,jpg,jpeg,PNG,JPG,JPEG}' : '*.{png,jpg,jpeg,PNG,JPG,JPEG}';
-          const globPattern = path.join(inputResolved, pattern);
-          inputPaths = await glob(globPattern, { nodir: true });
-        } else {
-          inputPaths = [inputResolved];
+      // Process each input (can be multiple files, directories, or patterns)
+      for (const input of inputs) {
+        const inputResolved = path.resolve(input);
+
+        // Check if input is a directory
+        try {
+          const stats = await fs.stat(inputResolved);
+          if (stats.isDirectory()) {
+            const pattern = options.recursive ? '**/*.{png,jpg,jpeg,PNG,JPG,JPEG}' : '*.{png,jpg,jpeg,PNG,JPG,JPEG}';
+            const globPattern = path.join(inputResolved, pattern);
+            const found = await glob(globPattern, { nodir: true });
+            inputPaths.push(...found);
+          } else {
+            inputPaths.push(inputResolved);
+          }
+        } catch (error) {
+          // Input might be a glob pattern
+          const found = await glob(input, { nodir: true });
+          inputPaths.push(...found);
         }
-      } catch (error) {
-        // Input might be a glob pattern
-        inputPaths = await glob(input, { nodir: true });
       }
 
       if (inputPaths.length === 0) {
