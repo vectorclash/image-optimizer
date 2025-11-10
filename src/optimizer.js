@@ -22,6 +22,10 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
   const originalStats = await fs.stat(inputPath);
   const originalSize = originalStats.size;
 
+  // Aim for 1KB under target to ensure we stay under the limit
+  const safetyMargin = 1024; // 1KB
+  const adjustedTarget = targetSize - safetyMargin;
+
   // If already under target size, just copy
   if (originalSize <= targetSize) {
     await fs.copyFile(inputPath, outputPath);
@@ -75,13 +79,13 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
       const stats = await fs.stat(outputPath);
       const currentSize = stats.size;
 
-      if (currentSize <= targetSize) {
-        // File is under target, try higher quality
+      if (currentSize <= adjustedTarget) {
+        // File is under adjusted target, try higher quality
         bestQuality = quality;
         bestSize = currentSize;
         low = quality + 1;
       } else {
-        // File is over target, try lower quality
+        // File is over adjusted target, try lower quality
         high = quality - 1;
       }
 
@@ -91,7 +95,7 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
   }
 
   // Generate final image with best quality found
-  if (bestSize === Infinity || bestSize > targetSize) {
+  if (bestSize === Infinity || bestSize > adjustedTarget) {
     // No suitable quality found, use minimum quality
     quality = minQuality;
     const image = sharp(inputPath);
