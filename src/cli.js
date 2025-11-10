@@ -78,7 +78,17 @@ program
       console.log(chalk.cyan(`Target size: ${formatBytes(targetSize)} (${targetSize} bytes)\n`));
 
       // Determine output directory
-      const outputDir = options.inPlace ? null : path.resolve(options.output);
+      let outputDir;
+      if (options.inPlace) {
+        outputDir = null;
+      } else if (options.output === './optimized') {
+        // Default case: create 'optimized' folder in the same directory as the input files
+        const firstInputDir = path.dirname(inputPaths[0]);
+        outputDir = path.join(firstInputDir, 'optimized');
+      } else {
+        // User specified a custom output directory
+        outputDir = path.resolve(options.output);
+      }
 
       // Start optimization
       const spinner = ora('Optimizing images...').start();
