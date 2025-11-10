@@ -1,0 +1,210 @@
+const sharp = require('sharp');
+const fs = require('fs').promises;
+const path = require('path');
+
+/**
+ * Optimize an image to meet target file size
+ * @param {string} inputPath - Path to input image
+ * @param {string} outputPath - Path to save optimized image
+ * @param {number} targetSize - Target file size in bytes
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Optimization result
+ */
+async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
+  const {
+    minQuality = 10,
+    maxQuality = 95,
+    step = 5,
+    maxIterations = 20
+  } = options;
+
+  const ext = path.extname(inputPath).toLowerCase();
+  const originalStats = await fs.stat(inputPath);
+  const originalSize = originalStats.size;
+
+  // If already under target size, just copy
+  if (originalSize <= targetSize) {
+    await fs.copyFile(inputPath, outputPath);
+    return {
+      success: true,
+      originalSize,
+      optimizedSize: originalSize,
+      quality: 100,
+      iterations: 0,
+      savings: 0,
+      savingsPercent: 0
+    };
+  }
+
+  let quality = maxQuality;
+  let bestQuality = quality;
+  let bestSize = Infinity;
+  let iterations = 0;
+
+  // Binary search for optimal quality
+  let low = minQuality;
+  let high = maxQuality;
+
+  while (low <= high && iterations < maxIterations) {
+    iterations++;
+    quality = Math.floor((low + high) / 2);
+
+    try {
+      const image = sharp(inputPath);
+
+      if (ext === '.png') {
+        await image
+          .png({
+            quality,
+            compressionLevel: 9,
+            effort: 10
+          })
+          .toFile(outputPath);
+      } else if (ext === '.jpg' || ext === '.jpeg') {
+        await image
+          .jpeg({
+            quality,
+            mozjpeg: true
+          })
+          .toFile(outputPath);
+      } else {
+        throw new Error(`Unsupported file format: ${ext}`);
+      }
+
+      const stats = await fs.stat(outputPath);
+      const currentSize = stats.size;
+
+      if (currentSize <= targetSize) {
+        // File is under target, try higher quality
+        bestQuality = quality;
+        bestSize = currentSize;
+        low = quality + 1;
+      } else {
+        // File is over target, try lower quality
+        high = quality - 1;
+      }
+
+    } catch (error) {
+      throw new Error(`Failed to optimize ${inputPath}: ${error.message}`);
+    }
+  }
+
+  // Generate final image with best quality found
+  if (bestSize === Infinity || bestSize > targetSize) {
+    // No suitable quality found, use minimum quality
+    quality = minQuality;
+    const image = sharp(inputPath);
+
+    if (ext === '.png') {
+      await image
+        .png({
+          quality,
+          compressionLevel: 9,
+          effort: 10
+        })
+        .toFile(outputPath);
+    } else {
+      await image
+        .jpeg({
+          quality,
+          mozjpeg: true
+        })
+        .toFile(outputPath);
+    }
+  } else if (bestQuality !== quality) {
+    // Regenerate with best quality if needed
+    const image = sharp(inputPath);
+
+    if (ext === '.png') {
+      await image
+        .png({
+          quality: bestQuality,
+          compressionLevel: 9,
+          effort: 10
+        })
+        .toFile(outputPath);
+    } else {
+      await image
+        .jpeg({
+          quality: bestQuality,
+          mozjpeg: true
+        })
+        .toFile(outputPath);
+    }
+  }
+
+  const finalStats = await fs.stat(outputPath);
+  const optimizedSize = finalStats.size;
+  const savings = originalSize - optimizedSize;
+  const savingsPercent = ((savings / originalSize) * 100).toFixed(2);
+
+  return {
+    success: optimizedSize <= targetSize,
+    originalSize,
+    optimizedSize,
+    quality: bestQuality || quality,
+    iterations,
+    savings,
+    savingsPercent,
+    underTarget: optimizedSize <= targetSize
+  };
+}
+
+/**
+ * Batch optimize multiple images
+ * @param {Array<string>} inputPaths - Array of input image paths
+ * @param {string} outputDir - Output directory
+ * @param {number} targetSize - Target file size in bytes
+ * @param {Object} options - Additional options
+ * @returns {Promise<Array>} - Array of optimization results
+ */
+async function batchOptimize(inputPaths, outputDir, targetSize, options = {}) {
+  // Ensure output directory exists
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const results = [];
+
+  for (const inputPath of inputPaths) {
+    const filename = path.basename(inputPath);
+    const outputPath = path.join(outputDir, filename);
+
+    try {
+      const result = await optimizeImage(inputPath, outputPath, targetSize, options);
+      results.push({
+        filename,
+        inputPath,
+        outputPath,
+        ...result
+      });
+    } catch (error) {
+      results.push({
+        filename,
+        inputPath,
+        outputPath,
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Format bytes to human readable string
+ * @param {number} bytes - Number of bytes
+ * @returns {string} - Formatted string
+ */
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+module.exports = {
+  optimizeImage,
+  batchOptimize,
+  formatBytes
+};
