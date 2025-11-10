@@ -22,6 +22,7 @@ program
   .option('-k, --size-kb <kb>', 'Target file size in kilobytes (overrides --size)')
   .option('--min-quality <number>', 'Minimum quality (1-100)', '10')
   .option('--max-quality <number>', 'Maximum quality (1-100)', '95')
+  .option('--safety-margin <bytes>', 'Safety margin in bytes to stay under target', '3072')
   .option('--in-place', 'Optimize files in place (overwrites originals)')
   .option('--recursive', 'Process directories recursively')
   .action(async (inputs, options) => {
@@ -88,7 +89,8 @@ program
         targetSize,
         {
           minQuality: parseInt(options.minQuality),
-          maxQuality: parseInt(options.maxQuality)
+          maxQuality: parseInt(options.maxQuality),
+          safetyMargin: parseInt(options.safetyMargin)
         }
       );
 

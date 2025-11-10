@@ -14,20 +14,19 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
   const {
     minQuality = 10,
     maxQuality = 95,
-    step = 5,
-    maxIterations = 20
+    maxIterations = 20,
+    safetyMargin = 3072 // 3KB default safety margin to account for filesystem overhead
   } = options;
 
   const ext = path.extname(inputPath).toLowerCase();
   const originalStats = await fs.stat(inputPath);
   const originalSize = originalStats.size;
 
-  // Aim for 1KB under target to ensure we stay under the limit
-  const safetyMargin = 1024; // 1KB
+  // Aim for safety margin under target to ensure we stay under the limit
   const adjustedTarget = targetSize - safetyMargin;
 
-  // If already under target size, just copy
-  if (originalSize <= targetSize) {
+  // If already under adjusted target (with safety margin), just copy
+  if (originalSize <= adjustedTarget) {
     await fs.copyFile(inputPath, outputPath);
     return {
       success: true,
@@ -58,11 +57,13 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
       const image = sharp(inputPath);
 
       if (ext === '.png') {
+        // For PNG, use palette with quality setting for lossy compression
         await image
           .png({
             quality,
             compressionLevel: 9,
-            effort: 10
+            effort: 10,
+            palette: true // Enable lossy compression for PNGs
           })
           .toFile(outputPath);
       } else if (ext === '.jpg' || ext === '.jpeg') {
@@ -105,7 +106,8 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
         .png({
           quality,
           compressionLevel: 9,
-          effort: 10
+          effort: 10,
+          palette: true
         })
         .toFile(outputPath);
     } else {
@@ -125,7 +127,8 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
         .png({
           quality: bestQuality,
           compressionLevel: 9,
-          effort: 10
+          effort: 10,
+          palette: true
         })
         .toFile(outputPath);
     } else {
@@ -138,8 +141,49 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
     }
   }
 
-  const finalStats = await fs.stat(outputPath);
-  const optimizedSize = finalStats.size;
+  let finalStats = await fs.stat(outputPath);
+  let optimizedSize = finalStats.size;
+
+  // If still over target, try more aggressive compression
+  if (optimizedSize > targetSize) {
+    // Try with even lower quality and strip all metadata
+    let aggressiveQuality = Math.max(1, minQuality - 5);
+
+    while (aggressiveQuality >= 1 && optimizedSize > targetSize) {
+      const image = sharp(inputPath);
+
+      if (ext === '.png') {
+        await image
+          .png({
+            quality: aggressiveQuality,
+            compressionLevel: 9,
+            effort: 10,
+            palette: true
+          })
+          .toFile(outputPath);
+      } else {
+        await image
+          .jpeg({
+            quality: aggressiveQuality,
+            mozjpeg: true,
+            chromaSubsampling: '4:2:0' // More aggressive chroma subsampling
+          })
+          .withMetadata({}) // Strip all metadata
+          .toFile(outputPath);
+      }
+
+      finalStats = await fs.stat(outputPath);
+      optimizedSize = finalStats.size;
+
+      if (optimizedSize <= targetSize) {
+        quality = aggressiveQuality;
+        break;
+      }
+
+      aggressiveQuality -= 2;
+    }
+  }
+
   const savings = originalSize - optimizedSize;
   const savingsPercent = ((savings / originalSize) * 100).toFixed(2);
 
