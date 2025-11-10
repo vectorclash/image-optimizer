@@ -32,7 +32,8 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
       quality: 100,
       iterations: 0,
       savings: 0,
-      savingsPercent: 0
+      savingsPercent: 0,
+      underTarget: true
     };
   }
 
