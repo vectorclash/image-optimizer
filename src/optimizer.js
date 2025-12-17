@@ -12,8 +12,8 @@ const path = require('path');
  */
 async function optimizeImage(inputPath, outputPath, targetSize = null, options = {}) {
   const {
-    minQuality = 85,
-    maxQuality = 95,
+    minQuality = 70,
+    maxQuality = 80,
     maxIterations = 20,
     safetyMargin = 1024 // 1KB default safety margin to account for filesystem overhead (only used with targetSize)
   } = options;
@@ -262,7 +262,16 @@ async function batchOptimize(inputPaths, outputDir, targetSize, options = {}) {
 
   for (const inputPath of inputPaths) {
     const filename = path.basename(inputPath);
-    const outputPath = path.join(outputDir, filename);
+
+    // If in-place mode, use a temporary filename to avoid conflicts
+    let outputPath;
+    if (options.inPlace) {
+      const ext = path.extname(filename);
+      const nameWithoutExt = path.basename(filename, ext);
+      outputPath = path.join(outputDir, `${nameWithoutExt}.optimized${ext}`);
+    } else {
+      outputPath = path.join(outputDir, filename);
+    }
 
     try {
       const result = await optimizeImage(inputPath, outputPath, targetSize, options);

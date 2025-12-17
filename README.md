@@ -4,7 +4,7 @@ A powerful command-line tool for batch optimizing PNG and JPG images with qualit
 
 ## Features
 
-- **Quality-First Optimization**: Default mode compresses images at 85-95 quality for excellent results
+- **Quality-First Optimization**: Default mode compresses images at 70-80 quality for aggressive compression with good visual quality
 - **Optional Size Targeting**: Specify a target file size when needed (e.g., 40KB) with binary search algorithm
 - **Smart Compression**: Uses MozJPEG for JPGs and lossy palette compression for PNGs
 - **Batch Processing**: Process multiple images at once with wildcard patterns
@@ -42,7 +42,7 @@ After running `npm link`, optimize all images in a folder with quality-based opt
 image-optimizer ~/Desktop/statics/*
 ```
 
-This creates `~/Desktop/statics/optimized/` with all images optimized at quality 85-95 for the best balance of file size and visual quality.
+This creates `~/Desktop/statics/optimized/` with all images optimized at quality 70-80 for aggressive compression with good visual quality.
 
 Banner ad backup mode (quick 40KB optimization):
 
@@ -60,10 +60,10 @@ Adjust the quality range for more or less compression:
 
 ```bash
 # Higher quality, larger files
-image-optimizer ~/Desktop/statics/* --min-quality 90 --max-quality 98
+image-optimizer ~/Desktop/statics/* --min-quality 85 --max-quality 95
 
-# More aggressive compression, smaller files
-image-optimizer ~/Desktop/statics/* --min-quality 75 --max-quality 90
+# Even more aggressive compression, smaller files
+image-optimizer ~/Desktop/statics/* --min-quality 60 --max-quality 70
 ```
 
 ### Without npm link
@@ -107,11 +107,11 @@ image-optimizer ~/Desktop/statics/* --in-place
 image-optimizer ~/Desktop/statics/* --size-kb 40 --safety-margin 2048
 ```
 
-**Control quality range (default 85-95 for quality mode, 10-95 for size mode):**
+**Control quality range (default 70-80 for quality mode, 10-80 for size mode):**
 
 ```bash
-# Quality mode with custom range
-image-optimizer ~/Desktop/statics/* --min-quality 75 --max-quality 90
+# Quality mode with custom range (higher quality)
+image-optimizer ~/Desktop/statics/* --min-quality 85 --max-quality 95
 
 # Size mode with custom quality range
 image-optimizer ~/Desktop/statics/* --size-kb 40 --min-quality 20 --max-quality 90
@@ -137,8 +137,8 @@ Options:
   -s, --size <bytes>       Target file size in bytes (optional, uses quality mode if not set)
   -k, --size-kb <kb>       Target file size in kilobytes (overrides --size)
   --backup                Banner ad backup mode: targets 40KB with optimized settings
-  --min-quality <number>   Minimum quality 1-100 (default: 85 for quality mode, 10 for size mode)
-  --max-quality <number>   Maximum quality 1-100 (default: 95)
+  --min-quality <number>   Minimum quality 1-100 (default: 70 for quality mode, 10 for size mode)
+  --max-quality <number>   Maximum quality 1-100 (default: 80)
   --safety-margin <bytes>  Safety margin in bytes to stay under target (default: 1024, only for size mode)
   --in-place              Optimize files in place (overwrites originals)
   --recursive             Process directories recursively
@@ -153,7 +153,7 @@ The optimizer has two modes:
 
 When no target size is specified, the tool optimizes for visual quality:
 
-1. **Quality Range**: Uses quality 85-95 (configurable) for excellent visual quality
+1. **Quality Range**: Uses quality 70-80 (configurable) for aggressive compression with good visual quality
 2. **Single Pass**: Compresses each image once at the maximum quality setting
 3. **Format-Specific Compression**:
    - **PNG**: Palette-based lossy compression with maximum compression level (9)
@@ -183,16 +183,16 @@ This ensures virtually all images reach your target size while maintaining the h
 
 ```bash
 image-optimizer ~/Desktop/statics/*
-# Creates ~/Desktop/statics/optimized/ with all images compressed at quality 85-95
-# Great for general web use - excellent quality with good file size reduction
+# Creates ~/Desktop/statics/optimized/ with all images compressed at quality 70-80
+# Aggressive compression with good visual quality - great for web use
 ```
 
-### Example 2: More aggressive quality-based compression
+### Example 2: Higher quality optimization
 
 ```bash
-image-optimizer ~/Desktop/statics/* --min-quality 75 --max-quality 85
-# Smaller files with slightly lower quality
-# Still maintains good visual quality for most use cases
+image-optimizer ~/Desktop/statics/* --min-quality 85 --max-quality 95
+# Larger files with better quality retention
+# Use when quality is more important than file size
 ```
 
 ### Example 3: Banner ad backup mode
@@ -231,28 +231,28 @@ image-optimizer ~/Desktop/statics/* -o ~/Desktop/production-ready
 
 ```
 Found 17 image(s) to optimize
-Mode: Quality-based optimization (quality 85-95)
+Mode: Quality-based optimization (quality 70-80)
 
 Optimizing images...
 
 Optimization Results:
 
 ✓ banner-1.jpg
-  156.2 KB → 48.3 KB (-69.07%) quality: 95
+  156.2 KB → 32.1 KB (-79.45%) quality: 80
 
 ✓ hero-image.jpg
-  1.2 MB → 89.4 KB (-92.55%) quality: 95
+  1.2 MB → 58.7 KB (-95.11%) quality: 80
 
 ✓ logo.png
-  89.3 KB → 52.1 KB (-41.65%) quality: 95
+  89.3 KB → 38.2 KB (-57.22%) quality: 80
 
 ✓ thumbnail-small.jpg
-  25.4 KB → 18.2 KB (-28.35%) quality: 95
+  25.4 KB → 12.8 KB (-49.61%) quality: 80
 
 Summary:
   Total images: 17
   Successful: 17
-  Total savings: 2.1 MB
+  Total savings: 2.5 MB
 
   Output directory: /Users/you/Desktop/statics/optimized
 ```
@@ -325,11 +325,11 @@ You can adjust this with `--safety-margin` if needed (e.g., `--safety-margin 204
 
 ## Tips
 
-- **Start with quality mode**: The default quality-based optimization (85-95) provides excellent results for most use cases
+- **Start with quality mode**: The default quality-based optimization (70-80) provides aggressive compression with good visual quality for most use cases
 - **Banner ad backups**: Use `--backup` for quick 40KB optimization - perfect for ad platform backup images
 - **Adjust quality for your needs**: Use `--min-quality` and `--max-quality` to dial in the perfect balance
-- **For maximum compression**: Try `--min-quality 70 --max-quality 80` for smaller files
-- **For highest quality**: Try `--min-quality 90 --max-quality 98` when quality is paramount
+- **For even smaller files**: Try `--min-quality 60 --max-quality 70` for maximum compression
+- **For higher quality**: Try `--min-quality 85 --max-quality 95` when quality is more important than file size
 - **Keep originals**: Default behavior creates `optimized` folder - originals stay safe
 - **Test first**: Process a few images before doing large batches
 - **Use recursive mode**: Process entire project directories at once with `--recursive`

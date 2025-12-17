@@ -21,8 +21,8 @@ program
   .option('-s, --size <bytes>', 'Target file size in bytes (optional, uses quality-based optimization if not set)')
   .option('-k, --size-kb <kb>', 'Target file size in kilobytes (overrides --size)')
   .option('--backup', 'Banner ad backup mode: targets 40KB with optimized settings')
-  .option('--min-quality <number>', 'Minimum quality (1-100, default: 85 for quality mode, 10 for size mode)', '85')
-  .option('--max-quality <number>', 'Maximum quality (1-100)', '95')
+  .option('--min-quality <number>', 'Minimum quality (1-100, default: 70 for quality mode, 10 for size mode)', '70')
+  .option('--max-quality <number>', 'Maximum quality (1-100)', '80')
   .option('--safety-margin <bytes>', 'Safety margin in bytes to stay under target (only used with size targeting)', '1024')
   .option('--in-place', 'Optimize files in place (overwrites originals)')
   .option('--recursive', 'Process directories recursively')
@@ -41,7 +41,7 @@ program
 
       // Adjust minQuality default based on mode
       let minQuality = parseInt(options.minQuality);
-      if (targetSize !== null && options.minQuality === '85') {
+      if (targetSize !== null && options.minQuality === '70') {
         // Size-targeting mode with default minQuality - use lower default
         minQuality = 10;
       }
@@ -120,7 +120,8 @@ program
         {
           minQuality: minQuality,
           maxQuality: parseInt(options.maxQuality),
-          safetyMargin: parseInt(options.safetyMargin)
+          safetyMargin: parseInt(options.safetyMargin),
+          inPlace: options.inPlace
         }
       );
 
