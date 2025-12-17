@@ -1,15 +1,15 @@
 # Image Optimizer
 
-A powerful command-line tool for batch optimizing PNG and JPG images to meet specific file size targets. Perfect for web developers, designers, and anyone who needs to ensure images stay under a certain file size limit.
+A powerful command-line tool for batch optimizing PNG and JPG images with quality-based or size-based optimization. Perfect for web developers, designers, and anyone who needs to compress images while maintaining excellent visual quality.
 
 ## Features
 
-- **Smart Optimization**: Binary search algorithm finds optimal quality settings
-- **Safety Margin**: Built-in 1KB safety margin ensures files stay under target (accounts for filesystem overhead)
+- **Quality-First Optimization**: Default mode compresses images at 85-95 quality for excellent results
+- **Optional Size Targeting**: Specify a target file size when needed (e.g., 40KB) with binary search algorithm
+- **Smart Compression**: Uses MozJPEG for JPGs and lossy palette compression for PNGs
 - **Batch Processing**: Process multiple images at once with wildcard patterns
-- **Target File Sizes**: Default 40KB, fully customizable
 - **Format Support**: PNG and JPG/JPEG with format-specific optimization
-- **Aggressive Fallback**: Automatically tries lower quality levels and metadata stripping for stubborn files
+- **Aggressive Fallback**: When size-targeting, automatically tries lower quality levels and metadata stripping
 - **Safe by Default**: Creates `optimized` folder in source directory, preserving originals
 - **Recursive Processing**: Process entire directory trees
 - **Detailed Reports**: See original vs optimized sizes, quality used, and savings
@@ -36,18 +36,34 @@ image-optimizer ~/Desktop/images/*
 
 ### Basic Usage
 
-After running `npm link`, optimize all images in a folder:
+After running `npm link`, optimize all images in a folder with quality-based optimization (default):
 
 ```bash
 image-optimizer ~/Desktop/statics/*
 ```
 
-This creates `~/Desktop/statics/optimized/` with all optimized images.
+This creates `~/Desktop/statics/optimized/` with all images optimized at quality 85-95 for the best balance of file size and visual quality.
+
+Banner ad backup mode (quick 40KB optimization):
+
+```bash
+image-optimizer ~/Desktop/statics/* --backup
+```
 
 Optimize to a specific size (e.g., 50KB):
 
 ```bash
 image-optimizer ~/Desktop/statics/* --size-kb 50
+```
+
+Adjust the quality range for more or less compression:
+
+```bash
+# Higher quality, larger files
+image-optimizer ~/Desktop/statics/* --min-quality 90 --max-quality 98
+
+# More aggressive compression, smaller files
+image-optimizer ~/Desktop/statics/* --min-quality 75 --max-quality 90
 ```
 
 ### Without npm link
@@ -59,6 +75,13 @@ node src/cli.js ~/Desktop/statics/*
 ```
 
 ### Advanced Usage
+
+**Banner ad backup mode (40KB target):**
+
+```bash
+image-optimizer ./images --backup
+# Quick shortcut for --size-kb 40 with optimized settings
+```
 
 **Process entire directory recursively:**
 
@@ -78,16 +101,20 @@ image-optimizer ./images -o ~/Desktop/final
 image-optimizer ~/Desktop/statics/* --in-place
 ```
 
-**Adjust safety margin (default 1KB):**
+**Adjust safety margin when size-targeting (default 1KB):**
 
 ```bash
-image-optimizer ~/Desktop/statics/* --safety-margin 2048
+image-optimizer ~/Desktop/statics/* --size-kb 40 --safety-margin 2048
 ```
 
-**Control quality range:**
+**Control quality range (default 85-95 for quality mode, 10-95 for size mode):**
 
 ```bash
-image-optimizer ~/Desktop/statics/* --min-quality 20 --max-quality 90
+# Quality mode with custom range
+image-optimizer ~/Desktop/statics/* --min-quality 75 --max-quality 90
+
+# Size mode with custom quality range
+image-optimizer ~/Desktop/statics/* --size-kb 40 --min-quality 20 --max-quality 90
 ```
 
 **Process directory (all supported files):**
@@ -107,11 +134,12 @@ Arguments:
 Options:
   -V, --version            output the version number
   -o, --output <dir>       Output directory (default: "optimized" folder in source directory)
-  -s, --size <bytes>       Target file size in bytes (default: "40960")
+  -s, --size <bytes>       Target file size in bytes (optional, uses quality mode if not set)
   -k, --size-kb <kb>       Target file size in kilobytes (overrides --size)
-  --min-quality <number>   Minimum quality (1-100) (default: "10")
-  --max-quality <number>   Maximum quality (1-100) (default: "95")
-  --safety-margin <bytes>  Safety margin in bytes to stay under target (default: "1024")
+  --backup                Banner ad backup mode: targets 40KB with optimized settings
+  --min-quality <number>   Minimum quality 1-100 (default: 85 for quality mode, 10 for size mode)
+  --max-quality <number>   Maximum quality 1-100 (default: 95)
+  --safety-margin <bytes>  Safety margin in bytes to stay under target (default: 1024, only for size mode)
   --in-place              Optimize files in place (overwrites originals)
   --recursive             Process directories recursively
   -h, --help              display help for command
@@ -119,14 +147,29 @@ Options:
 
 ## How It Works
 
-The optimizer uses a multi-stage approach to ensure images meet your target file size:
+The optimizer has two modes:
+
+### Quality-Based Optimization (Default)
+
+When no target size is specified, the tool optimizes for visual quality:
+
+1. **Quality Range**: Uses quality 85-95 (configurable) for excellent visual quality
+2. **Single Pass**: Compresses each image once at the maximum quality setting
+3. **Format-Specific Compression**:
+   - **PNG**: Palette-based lossy compression with maximum compression level (9)
+   - **JPG**: MozJPEG for superior compression quality
+4. **Predictable Results**: Consistent quality across all images while achieving good file size reduction
+
+This mode is ideal when you want to compress images as much as possible while maintaining high visual quality, without worrying about specific file size limits.
+
+### Size-Based Optimization (Optional)
+
+When you specify `--size` or `--size-kb`, the tool targets a specific file size:
 
 1. **Safety Margin**: Targets 1KB below your specified limit (e.g., 39KB for 40KB target) to account for filesystem overhead
 2. **Initial Check**: If image is already under the adjusted target, it's simply copied
 3. **Binary Search**: Uses quality levels 10-95 to find optimal compression while staying under target
-4. **Format-Specific Compression**:
-   - **PNG**: Palette-based lossy compression with maximum compression level (9)
-   - **JPG**: MozJPEG for superior compression quality
+4. **Format-Specific Compression**: Same as quality mode
 5. **Aggressive Fallback**: If target isn't reached, tries:
    - Lower quality levels (down to quality 1)
    - Metadata stripping
@@ -136,28 +179,46 @@ This ensures virtually all images reach your target size while maintaining the h
 
 ## Examples
 
-### Example 1: Basic usage - optimize all images in a folder
+### Example 1: Quality-based optimization (default)
 
 ```bash
 image-optimizer ~/Desktop/statics/*
-# Creates ~/Desktop/statics/optimized/ with all images under 40KB
+# Creates ~/Desktop/statics/optimized/ with all images compressed at quality 85-95
+# Great for general web use - excellent quality with good file size reduction
 ```
 
-### Example 2: Optimize with different target size
+### Example 2: More aggressive quality-based compression
+
+```bash
+image-optimizer ~/Desktop/statics/* --min-quality 75 --max-quality 85
+# Smaller files with slightly lower quality
+# Still maintains good visual quality for most use cases
+```
+
+### Example 3: Banner ad backup mode
+
+```bash
+image-optimizer ~/Desktop/banner-ads/* --backup
+# Quick shortcut for banner ad backups - targets 40KB
+# Perfect for ad platform backup images
+```
+
+### Example 4: Size-based optimization for specific target
 
 ```bash
 image-optimizer ~/Desktop/statics/* --size-kb 50
-# Targets 50KB (actually 49KB with safety margin)
+# Targets 50KB per file (actually 49KB with safety margin)
+# Uses binary search to find optimal quality for each image
 ```
 
-### Example 3: Process entire directory recursively
+### Example 5: Process entire directory recursively
 
 ```bash
 image-optimizer ~/Projects/website/images --recursive
-# Processes all images in images/ and subdirectories
+# Processes all images in images/ and subdirectories using quality mode
 ```
 
-### Example 4: Custom output location
+### Example 6: Custom output location
 
 ```bash
 image-optimizer ~/Desktop/statics/* -o ~/Desktop/production-ready
@@ -165,6 +226,38 @@ image-optimizer ~/Desktop/statics/* -o ~/Desktop/production-ready
 ```
 
 ## Output Example
+
+### Quality Mode Output
+
+```
+Found 17 image(s) to optimize
+Mode: Quality-based optimization (quality 85-95)
+
+Optimizing images...
+
+Optimization Results:
+
+✓ banner-1.jpg
+  156.2 KB → 48.3 KB (-69.07%) quality: 95
+
+✓ hero-image.jpg
+  1.2 MB → 89.4 KB (-92.55%) quality: 95
+
+✓ logo.png
+  89.3 KB → 52.1 KB (-41.65%) quality: 95
+
+✓ thumbnail-small.jpg
+  25.4 KB → 18.2 KB (-28.35%) quality: 95
+
+Summary:
+  Total images: 17
+  Successful: 17
+  Total savings: 2.1 MB
+
+  Output directory: /Users/you/Desktop/statics/optimized
+```
+
+### Size Mode Output
 
 ```
 Found 17 image(s) to optimize
@@ -207,9 +300,22 @@ Summary:
 - **ora**: Elegant terminal spinners
 - **glob**: File pattern matching
 
+## Choosing Between Modes
+
+### Use Quality Mode (default) when:
+- You want consistent, high-quality compression across all images
+- File size limits aren't critical but you want good compression
+- You're preparing images for general web use
+- You want faster processing (single-pass optimization)
+
+### Use Size Mode when:
+- You have strict file size requirements (e.g., API limits, platform restrictions)
+- Different images need different quality levels to meet the same size target
+- You need to ensure all images stay under a specific threshold
+
 ## Why the Safety Margin?
 
-The tool uses a 1KB safety margin by default (targets 39KB for 40KB limit) because:
+When using size-targeting mode, the tool uses a 1KB safety margin by default (targets 39KB for 40KB limit) because:
 
 - **Filesystem overhead**: File sizes on disk vs. actual file sizes can differ slightly
 - **Edge case protection**: Ensures files that are close to the limit get processed and optimized
@@ -219,11 +325,13 @@ You can adjust this with `--safety-margin` if needed (e.g., `--safety-margin 204
 
 ## Tips
 
-- **For web images**: 40KB default is ideal for most use cases
-- **For QA**: The 1KB safety margin ensures files stay under target while maximizing quality
+- **Start with quality mode**: The default quality-based optimization (85-95) provides excellent results for most use cases
+- **Banner ad backups**: Use `--backup` for quick 40KB optimization - perfect for ad platform backup images
+- **Adjust quality for your needs**: Use `--min-quality` and `--max-quality` to dial in the perfect balance
+- **For maximum compression**: Try `--min-quality 70 --max-quality 80` for smaller files
+- **For highest quality**: Try `--min-quality 90 --max-quality 98` when quality is paramount
 - **Keep originals**: Default behavior creates `optimized` folder - originals stay safe
 - **Test first**: Process a few images before doing large batches
-- **Adjust safety margin**: Increase to 2-3KB if you need more buffer (e.g., `--safety-margin 2048`)
 - **Use recursive mode**: Process entire project directories at once with `--recursive`
 
 ## License

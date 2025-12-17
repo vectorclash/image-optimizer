@@ -3,26 +3,73 @@ const fs = require('fs').promises;
 const path = require('path');
 
 /**
- * Optimize an image to meet target file size
+ * Optimize an image with quality-based or size-based approach
  * @param {string} inputPath - Path to input image
  * @param {string} outputPath - Path to save optimized image
- * @param {number} targetSize - Target file size in bytes
+ * @param {number|null} targetSize - Target file size in bytes (null for quality-based optimization)
  * @param {Object} options - Additional options
  * @returns {Promise<Object>} - Optimization result
  */
-async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
+async function optimizeImage(inputPath, outputPath, targetSize = null, options = {}) {
   const {
-    minQuality = 10,
+    minQuality = 85,
     maxQuality = 95,
     maxIterations = 20,
-    safetyMargin = 1024 // 1KB default safety margin to account for filesystem overhead
+    safetyMargin = 1024 // 1KB default safety margin to account for filesystem overhead (only used with targetSize)
   } = options;
 
   const ext = path.extname(inputPath).toLowerCase();
   const originalStats = await fs.stat(inputPath);
   const originalSize = originalStats.size;
 
-  // Aim for safety margin under target to ensure we stay under the limit
+  // Quality-based optimization (no target size)
+  if (targetSize === null) {
+    let quality = maxQuality;
+
+    try {
+      const image = sharp(inputPath);
+
+      if (ext === '.png') {
+        await image
+          .png({
+            quality,
+            compressionLevel: 9,
+            effort: 10,
+            palette: true // Enable lossy compression for PNGs
+          })
+          .toFile(outputPath);
+      } else if (ext === '.jpg' || ext === '.jpeg') {
+        await image
+          .jpeg({
+            quality,
+            mozjpeg: true
+          })
+          .toFile(outputPath);
+      } else {
+        throw new Error(`Unsupported file format: ${ext}`);
+      }
+
+      const finalStats = await fs.stat(outputPath);
+      const optimizedSize = finalStats.size;
+      const savings = originalSize - optimizedSize;
+      const savingsPercent = ((savings / originalSize) * 100).toFixed(2);
+
+      return {
+        success: true,
+        originalSize,
+        optimizedSize,
+        quality,
+        iterations: 1,
+        savings,
+        savingsPercent,
+        underTarget: true
+      };
+    } catch (error) {
+      throw new Error(`Failed to optimize ${inputPath}: ${error.message}`);
+    }
+  }
+
+  // Size-based optimization (original behavior)
   const adjustedTarget = targetSize - safetyMargin;
 
   // If already under adjusted target (with safety margin), just copy
@@ -98,7 +145,7 @@ async function optimizeImage(inputPath, outputPath, targetSize, options = {}) {
   // Generate final image with best quality found
   if (bestSize === Infinity || bestSize > adjustedTarget) {
     // No suitable quality found, use minimum quality
-    quality = minQuality;
+    quality = Math.max(10, minQuality);
     const image = sharp(inputPath);
 
     if (ext === '.png') {

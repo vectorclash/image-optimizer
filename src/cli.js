@@ -12,25 +12,38 @@ const program = new Command();
 
 program
   .name('image-optimizer')
-  .description('Batch optimize PNG and JPG images to meet target file size')
+  .description('Batch optimize PNG and JPG images with quality-based or size-based optimization')
   .version('1.0.0');
 
 program
   .argument('<input...>', 'Input file(s), pattern (e.g., "*.png"), or directory')
   .option('-o, --output <dir>', 'Output directory', './optimized')
-  .option('-s, --size <bytes>', 'Target file size in bytes', '40960')
+  .option('-s, --size <bytes>', 'Target file size in bytes (optional, uses quality-based optimization if not set)')
   .option('-k, --size-kb <kb>', 'Target file size in kilobytes (overrides --size)')
-  .option('--min-quality <number>', 'Minimum quality (1-100)', '10')
+  .option('--backup', 'Banner ad backup mode: targets 40KB with optimized settings')
+  .option('--min-quality <number>', 'Minimum quality (1-100, default: 85 for quality mode, 10 for size mode)', '85')
   .option('--max-quality <number>', 'Maximum quality (1-100)', '95')
-  .option('--safety-margin <bytes>', 'Safety margin in bytes to stay under target', '1024')
+  .option('--safety-margin <bytes>', 'Safety margin in bytes to stay under target (only used with size targeting)', '1024')
   .option('--in-place', 'Optimize files in place (overwrites originals)')
   .option('--recursive', 'Process directories recursively')
   .action(async (inputs, options) => {
     try {
-      // Calculate target size
-      let targetSize = parseInt(options.size);
-      if (options.sizeKb) {
+      // Calculate target size (null means quality-based optimization)
+      let targetSize = null;
+      if (options.backup) {
+        // Banner ad backup mode: 40KB target
+        targetSize = 40 * 1024;
+      } else if (options.sizeKb) {
         targetSize = parseInt(options.sizeKb) * 1024;
+      } else if (options.size) {
+        targetSize = parseInt(options.size);
+      }
+
+      // Adjust minQuality default based on mode
+      let minQuality = parseInt(options.minQuality);
+      if (targetSize !== null && options.minQuality === '85') {
+        // Size-targeting mode with default minQuality - use lower default
+        minQuality = 10;
       }
 
       // Resolve input paths
@@ -75,7 +88,14 @@ program
       }
 
       console.log(chalk.cyan(`Found ${inputPaths.length} image(s) to optimize`));
-      console.log(chalk.cyan(`Target size: ${formatBytes(targetSize)} (${targetSize} bytes)\n`));
+      if (options.backup) {
+        console.log(chalk.cyan(`Mode: Banner ad backup (target: ${formatBytes(targetSize)})`));
+      } else if (targetSize !== null) {
+        console.log(chalk.cyan(`Target size: ${formatBytes(targetSize)} (${targetSize} bytes)`));
+      } else {
+        console.log(chalk.cyan(`Mode: Quality-based optimization (quality ${minQuality}-${parseInt(options.maxQuality)})`));
+      }
+      console.log('');
 
       // Determine output directory
       let outputDir;
@@ -98,7 +118,7 @@ program
         outputDir || path.dirname(inputPaths[0]),
         targetSize,
         {
-          minQuality: parseInt(options.minQuality),
+          minQuality: minQuality,
           maxQuality: parseInt(options.maxQuality),
           safetyMargin: parseInt(options.safetyMargin)
         }
@@ -136,7 +156,7 @@ program
           console.log(`${statusIcon} ${result.filename}`);
           console.log(`  ${sizeInfo} ${savingsInfo} ${qualityInfo}`);
 
-          if (!result.underTarget) {
+          if (targetSize !== null && !result.underTarget) {
             console.log(chalk.yellow(`  Warning: Could not reach target size of ${formatBytes(targetSize)}`));
           }
 
