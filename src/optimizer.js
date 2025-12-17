@@ -263,12 +263,15 @@ async function batchOptimize(inputPaths, outputDir, targetSize, options = {}) {
   for (const inputPath of inputPaths) {
     const filename = path.basename(inputPath);
 
-    // If in-place mode, use a temporary filename to avoid conflicts
+    // If in-place mode, use a temporary filename to avoid conflicts with sharp
     let outputPath;
     if (options.inPlace) {
+      // Use timestamp + random to ensure uniqueness
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
       const ext = path.extname(filename);
       const nameWithoutExt = path.basename(filename, ext);
-      outputPath = path.join(outputDir, `${nameWithoutExt}.optimized${ext}`);
+      outputPath = path.join(outputDir, `${nameWithoutExt}.tmp-${timestamp}-${random}${ext}`);
     } else {
       outputPath = path.join(outputDir, filename);
     }
